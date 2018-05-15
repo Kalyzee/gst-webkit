@@ -3,7 +3,7 @@
  * Copyright (C) 2005 Thomas Vander Stichele <thomas@apestaart.org>
  * Copyright (C) 2005 Ronald S. Bultje <rbultje@ronald.bitfreak.net>
  * Copyright (C) 2018 Ludovic <<user@hostname.org>>
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -47,6 +47,8 @@
 #define __GST_WEBKITOVERLAYFILTER_H__
 
 #include <gst/gst.h>
+#include <gtk/gtk.h>
+#include <webkit/webkit.h>
 
 G_BEGIN_DECLS
 
@@ -71,10 +73,13 @@ struct _GstWebkitOverlayFilter
 
   GstPad *sinkpad, *srcpad;
 
-  gboolean silent;
+  const gchar* url;
+  WebKitWebView *web_view;
+  GtkWidget *window;
+  gboolean ready;
 };
 
-struct _GstWebkitOverlayFilterClass 
+struct _GstWebkitOverlayFilterClass
 {
   GstElementClass parent_class;
 };

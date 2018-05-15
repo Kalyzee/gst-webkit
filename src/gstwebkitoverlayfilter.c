@@ -63,7 +63,6 @@
 #include <gst/gst.h>
 
 #include <cairo.h>
-#include <webkit/webkit.h>
 
 #include "gstwebkitoverlayfilter.h"
 
@@ -80,7 +79,7 @@ enum
 enum
 {
   PROP_0,
-  PROP_SILENT
+  PROP_URL
 };
 
 /* the capabilities of the inputs and outputs.
@@ -129,9 +128,9 @@ gst_webkit_overlay_filter_class_init (GstWebkitOverlayFilterClass * klass)
   gobject_class->set_property = gst_webkit_overlay_filter_set_property;
   gobject_class->get_property = gst_webkit_overlay_filter_get_property;
 
-  g_object_class_install_property (gobject_class, PROP_SILENT,
-      g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
-          FALSE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_URL,
+      g_param_spec_string ("url", "URL", "url page",
+          "", G_PARAM_READWRITE));
 
   gst_element_class_set_details_simple(gstelement_class,
     "WebkitOverlayFilter",
@@ -145,6 +144,22 @@ gst_webkit_overlay_filter_class_init (GstWebkitOverlayFilterClass * klass)
       gst_static_pad_template_get (&sink_factory));
 }
 
+static void gst_webkit_overlay_filer_load_webkit_ready(gpointer filter){
+  GST_WEBKITOVERLAYFILTER(filter)->ready = TRUE;
+  g_print("OK");
+
+}
+
+static void gst_webkit_overlay_filer_load_status_updated(GObject* object, GParamSpec* pspec, gpointer filter){
+  WebKitWebView *web_view = WEBKIT_WEB_VIEW(object);
+  WebKitLoadStatus status = webkit_web_view_get_load_status(web_view);
+  if (status != WEBKIT_LOAD_FINISHED) {
+      return;
+  }
+
+  g_timeout_add(100, gst_webkit_overlay_filer_load_webkit_ready, (gpointer) filter);
+}
+
 /* initialize the new element
  * instantiate pads and add them to element
  * set pad calback functions
@@ -153,6 +168,9 @@ gst_webkit_overlay_filter_class_init (GstWebkitOverlayFilterClass * klass)
 static void
 gst_webkit_overlay_filter_init (GstWebkitOverlayFilter * filter)
 {
+
+  gtk_init(NULL, NULL);
+
   filter->sinkpad = gst_pad_new_from_static_template (&sink_factory, "sink");
   gst_pad_set_event_function (filter->sinkpad,
                               GST_DEBUG_FUNCPTR(gst_webkit_overlay_filter_sink_event));
@@ -165,7 +183,22 @@ gst_webkit_overlay_filter_init (GstWebkitOverlayFilter * filter)
   GST_PAD_SET_PROXY_CAPS (filter->srcpad);
   gst_element_add_pad (GST_ELEMENT (filter), filter->srcpad);
 
-  filter->silent = FALSE;
+  filter->url = "http://www.google.com";
+  filter->ready = FALSE;
+
+  if (!g_thread_supported()) {g_thread_init(NULL);}
+
+  filter->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+
+  g_signal_connect(filter->web_view, "notify::load-status", G_CALLBACK(gst_webkit_overlay_filer_load_status_updated), (gpointer) filter);
+
+  filter->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_default_size(GTK_WINDOW(filter->window), 1280, 720);
+  gtk_container_add(GTK_CONTAINER(filter->window), GTK_WIDGET(filter->web_view));
+
+  webkit_web_view_load_uri(filter->web_view, "http://www.google.com");
+
+
 }
 
 static void
@@ -175,8 +208,8 @@ gst_webkit_overlay_filter_set_property (GObject * object, guint prop_id,
   GstWebkitOverlayFilter *filter = GST_WEBKITOVERLAYFILTER (object);
 
   switch (prop_id) {
-    case PROP_SILENT:
-      filter->silent = g_value_get_boolean (value);
+    case PROP_URL:
+      filter->url = g_value_get_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -191,8 +224,8 @@ gst_webkit_overlay_filter_get_property (GObject * object, guint prop_id,
   GstWebkitOverlayFilter *filter = GST_WEBKITOVERLAYFILTER (object);
 
   switch (prop_id) {
-    case PROP_SILENT:
-      g_value_set_boolean (value, filter->silent);
+    case PROP_URL:
+      g_value_set_string (value, filter->url);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -239,20 +272,18 @@ gst_webkit_overlay_filter_sink_event (GstPad * pad, GstObject * parent, GstEvent
 static GstFlowReturn
 gst_webkit_overlay_filter_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
 {
+
   GstWebkitOverlayFilter *filter;
   cairo_surface_t *s;
   int stride;
 
   filter = GST_WEBKITOVERLAYFILTER (parent);
-
-  if (filter->silent == FALSE)
-    g_print ("I'm plugged, therefore I'm in.\n");
+  if (filter->ready){
+    g_print("OK READY");
 
     GstMapInfo map;
     buf = gst_buffer_make_writable (buf);
     gst_buffer_map (buf, &map, GST_MAP_WRITE);
-
-    gst_buffer_map(buf, &map, GST_MAP_WRITE);
 
     stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, 1280);
     s = cairo_image_surface_create_for_data (map.data,
@@ -262,16 +293,13 @@ gst_webkit_overlay_filter_chain (GstPad * pad, GstObject * parent, GstBuffer * b
                             stride);
 
     cairo_t* cr = cairo_create(s);
-    cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
-    cairo_set_line_width(cr, 1);
-
-    cairo_rectangle(cr, 20, 20, 120, 80);
-    cairo_rectangle(cr, 180, 20, 80, 80);
-    cairo_stroke_preserve(cr);
+    gtk_widget_draw(filter->web_view, cr);
     cairo_fill(cr);
     gst_buffer_unmap (buf, &map);
     cairo_destroy (cr);
     //cairo_surface_destroy(s);
+
+  }
 
 
   /* just push out the incoming buffer without touching it */
