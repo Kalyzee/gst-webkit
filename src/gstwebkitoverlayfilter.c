@@ -62,6 +62,9 @@
 
 #include <gst/gst.h>
 
+#include <cairo.h>
+#include <webkit/webkit.h>
+
 #include "gstwebkitoverlayfilter.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_webkit_overlay_filter_debug);

@@ -11,9 +11,9 @@ plugin_LTLIBRARIES = libgstwebkitoverlay.la
 libgstwebkitoverlay_la_SOURCES = gstwebkitoverlayfilter.c
 
 # compiler and linker flags used to compile this plugin, set in configure.ac
-libgstwebkitoverlay_la_CFLAGS = $(GST_CFLAGS)
+libgstwebkitoverlay_la_CFLAGS = $(GST_CFLAGS) $(CAIRO_CFLAGS) $(WEBKIT_CFLAGS)
 libgstwebkitoverlay_la_LIBADD = $(GST_LIBS)
-libgstwebkitoverlay_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
+libgstwebkitoverlay_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) $(CAIRO_LDFLAGS) $(WEBKIT_LDFLAGS)
 libgstwebkitoverlay_la_LIBTOOLFLAGS = --tag=disable-static
 
 # headers we need but don't want installed

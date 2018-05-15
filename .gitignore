@@ -1,17 +1,20 @@
-# Prerequisites
-*.d
-
-src/.deps
+autom4te.cache
 Makefile
 Makefile.in
+src/Makefile
+src/Makefile.in
 aclocal.m4
-autom4te.cache/
 config.h
-config.h.in~
 configure
-src/.libs/
+src/.deps
+config.status
+config.h.in~
+src/.libs
 
 
+
+# Prerequisites
+*.d
 
 *.log
 

@@ -7,6 +7,8 @@ AC_INIT([gst-webkit],[1.0.0])
 dnl required versions of gstreamer and plugins-base
 GST_REQUIRED=1.0.0
 GSTPB_REQUIRED=1.0.0
+CAIRO_REQUIRED=1.14.6
+WEBKIT_REQUIRED=2.4.11
 
 #AC_CONFIG_SRCDIR([src/gstplugin.c])
 AC_CONFIG_HEADERS([config.h])
@@ -59,6 +61,32 @@ PKG_CHECK_MODULES(GST, [
       or similar. The minimum version required is $GST_REQUIRED.
   ])
 ])
+
+
+PKG_CHECK_MODULES(CAIRO, [
+  cairo >= $CAIRO_REQUIRED
+], [
+  AC_SUBST(CAIRO_CFLAGS)
+  AC_SUBST(CAIRO_LIBS)
+], [
+  AC_MSG_ERROR([
+      You need to install or upgrade Cairo
+  ])
+])
+
+
+PKG_CHECK_MODULES(WEBKIT, [
+  webkit-1.0 >= $WEBKIT_REQUIRED
+], [
+  AC_SUBST(WEBKIT_CFLAGS)
+  AC_SUBST(WEBKIT_LIBS)
+], [
+  AC_MSG_ERROR([
+      You need to install or upgrade WEBKIT
+      apt-get install libwebkit2gtk-3.0-dev
+  ])
+])
+
 
 dnl check if compiler understands -Wall (if yes, add -Wall to GST_CFLAGS)
 AC_MSG_CHECKING([to see if compiler understands -Wall])
