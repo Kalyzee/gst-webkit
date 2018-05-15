@@ -91,7 +91,7 @@ static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("video/x-raw,"
-        "format=(string){RGBA},"
+        "format=(string){ARGB},"
         "width=[1,MAX],height=[1,MAX]," "framerate=(fraction)[0/1,MAX]")
     );
 
@@ -99,7 +99,7 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("video/x-raw,"
-        "format=(string){RGBA},"
+        "format=(string){ARGB},"
         "width=[1,MAX],height=[1,MAX]," "framerate=(fraction)[0/1,MAX]")
     );
 
@@ -240,11 +240,39 @@ static GstFlowReturn
 gst_webkit_overlay_filter_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
 {
   GstWebkitOverlayFilter *filter;
+  cairo_surface_t *s;
+  int stride;
 
   filter = GST_WEBKITOVERLAYFILTER (parent);
 
   if (filter->silent == FALSE)
     g_print ("I'm plugged, therefore I'm in.\n");
+
+    GstMapInfo map;
+    buf = gst_buffer_make_writable (buf);
+    gst_buffer_map (buf, &map, GST_MAP_WRITE);
+
+    gst_buffer_map(buf, &map, GST_MAP_WRITE);
+
+    stride = cairo_format_stride_for_width (CAIRO_FORMAT_ARGB32, 1280);
+    s = cairo_image_surface_create_for_data (map.data,
+                            CAIRO_FORMAT_ARGB32,
+                            1280,
+                            720,
+                            stride);
+
+    cairo_t* cr = cairo_create(s);
+    cairo_set_source_rgb(cr, 0.6, 0.6, 0.6);
+    cairo_set_line_width(cr, 1);
+
+    cairo_rectangle(cr, 20, 20, 120, 80);
+    cairo_rectangle(cr, 180, 20, 80, 80);
+    cairo_stroke_preserve(cr);
+    cairo_fill(cr);
+    gst_buffer_unmap (buf, &map);
+    cairo_destroy (cr);
+    //cairo_surface_destroy(s);
+
 
   /* just push out the incoming buffer without touching it */
   return gst_pad_push (filter->srcpad, buf);

@@ -83,7 +83,7 @@ PKG_CHECK_MODULES(WEBKIT, [
 ], [
   AC_MSG_ERROR([
       You need to install or upgrade WEBKIT
-      apt-get install libwebkit2gtk-3.0-dev
+      apt-get install libwebkit-dev
   ])
 ])
 
