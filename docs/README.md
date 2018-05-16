@@ -122,3 +122,8 @@ Test pipeline
 ```
 gst-launch-1.0 videotestsrc ! video/x-raw, format=ARGB, width=1280, height=720 ! videoconvert ! webkitoverlayfilter url=http://www.google.com ! videoconvert ! xvimagesink
 ```
+
+
+```
+gst-launch-1.0 webkitsrc ! video/x-raw, format=ARGB, width=1280, height=720 ! videoconvert ! videoconvert ! xvimagesink
+```
