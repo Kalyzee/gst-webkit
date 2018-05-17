@@ -120,6 +120,7 @@ static void
 gst_webkit_src_class_init (GstWebkitSrcClass * klass)
 {
   gtk_init(NULL, NULL);
+
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
   GstBaseSrcClass *gstbase_src_class;
@@ -166,6 +167,7 @@ gst_webkit_src_event_handler (GstBaseSrc * basesrc, GstEvent * event)
 
 static void gst_webkit_src_load_webkit_ready(gpointer filter){
   GST_WEBKIT_SRC(filter)->ready = TRUE;
+  g_print("FILTER IS NOW READY");
 }
 
 static void gst_webkit_src_load_status_updated(GObject* object, GParamSpec* pspec, gpointer filter){
@@ -203,7 +205,9 @@ gst_webkit_src_init (GstWebkitSrc * filter)
   filter->window = gtk_offscreen_window_new();
   gtk_window_set_default_size(GTK_WINDOW(filter->window), 1280, 720);
   gtk_container_add(GTK_CONTAINER(filter->window), GTK_WIDGET(filter->web_view));
-  //gtk_widget_show_all(filter->window);
+  gtk_widget_realize(filter->window);
+
+  gtk_widget_show_all(filter->window);
 
   webkit_web_view_load_uri(filter->web_view, "http://www.google.com");
 
@@ -303,7 +307,7 @@ gst_webkit_src_prepare_buffer (GstWebkitSrc * src, guint8 * data, gsize size)
     return;
   if (src->ready){
     GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
-    memcpy(data, gdk_pixbuf_get_pixels(pixbuf), 10);
+    memcpy(data, gdk_pixbuf_get_pixels(pixbuf), size);
   }else{
     memset (data, 0, size);
   }

@@ -125,5 +125,5 @@ gst-launch-1.0 videotestsrc ! video/x-raw, format=ARGB, width=1280, height=720 !
 
 
 ```
-gst-launch-1.0 webkitsrc ! video/x-raw, format=ARGB, width=1280, height=720 ! videoconvert ! videoconvert ! xvimagesink
+gst-launch-1.0 webkitsrc ! video/x-raw, format=RGB, width=1280, height=720 ! videoconvert ! videoconvert ! xvimagesink
 ```
