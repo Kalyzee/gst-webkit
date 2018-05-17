@@ -1,4 +1,4 @@
-# Gst Webkit
+su# Gst Webkit
 
 Easiest way to build overlays with Gstreamer
 
@@ -125,5 +125,12 @@ gst-launch-1.0 videotestsrc ! video/x-raw, format=ARGB, width=1280, height=720 !
 
 
 ```
-gst-launch-1.0 webkitsrc ! video/x-raw, format=RGB, width=1280, height=720 ! videoconvert ! videoconvert ! xvimagesink
+gst-launch-1.0 webkitsrc ! video/x-raw, format=RGB, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
+```
+
+```
+gst-launch-1.0 webkitsrc ! video/x-raw, format=RGB, width=1280, height=720 ! mixer.sink_0 \
+  videotestsrc ! video/x-raw, format=RGB, width=1280, height=720 ! alpha method=green ! mixer.sink_1 \
+  videomixer name=mixer sink_0::zorder=0 sink_1::zorder=1 ! \
+  videoconvert ! autovideosink
 ```

@@ -168,6 +168,7 @@ gst_webkit_src_event_handler (GstBaseSrc * basesrc, GstEvent * event)
 static void gst_webkit_src_load_webkit_ready(gpointer filter){
   GST_WEBKIT_SRC(filter)->ready = TRUE;
   g_print("FILTER IS NOW READY");
+  return FALSE;
 }
 
 static void gst_webkit_src_load_status_updated(GObject* object, GParamSpec* pspec, gpointer filter){
@@ -201,6 +202,7 @@ gst_webkit_src_init (GstWebkitSrc * filter)
   filter->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
   g_signal_connect(filter->web_view, "notify::load-status", G_CALLBACK(gst_webkit_src_load_status_updated), (gpointer) filter);
+  gst_base_src_set_live((GstBaseSrc *) filter, TRUE);
 
   filter->window = gtk_offscreen_window_new();
   gtk_window_set_default_size(GTK_WINDOW(filter->window), 1280, 720);
@@ -208,9 +210,7 @@ gst_webkit_src_init (GstWebkitSrc * filter)
   gtk_widget_realize(filter->window);
 
   gtk_widget_show_all(filter->window);
-
-  webkit_web_view_load_uri(filter->web_view, "http://www.google.com");
-
+  webkit_web_view_load_uri(filter->web_view, "http://localhost/test.html");
 
 }
 
