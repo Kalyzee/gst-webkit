@@ -1,8 +1,8 @@
 /*
- * GStreamer
+ * Gstreamer Webkit Plugin
  * Copyright (C) 2005 Thomas Vander Stichele <thomas@apestaart.org>
  * Copyright (C) 2005 Ronald S. Bultje <rbultje@ronald.bitfreak.net>
- * Copyright (C) 2018 Ludovic <<user@hostname.org>>
+ * Copyright (C) 2018 Kalyzee <ludovic.bouguerra@kalyzee.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -178,7 +178,12 @@ static void gst_webkit_src_load_status_updated(GObject* object, GParamSpec* pspe
       return;
   }
 
-  g_timeout_add(100, gst_webkit_src_load_webkit_ready, (gpointer) filter);
+  g_timeout_add(1000, gst_webkit_src_load_webkit_ready, (gpointer) filter);
+}
+
+
+static void gst_webkit_src_redrawing(GObject* object, GParamSpec* pspec, gpointer filter){
+  g_print("HELLO");
 }
 
 /* initialize the new element
@@ -202,6 +207,8 @@ gst_webkit_src_init (GstWebkitSrc * filter)
   filter->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
   g_signal_connect(filter->web_view, "notify::load-status", G_CALLBACK(gst_webkit_src_load_status_updated), (gpointer) filter);
+  //g_signal_connect(filter->web_view, "draw", G_CALLBACK(gst_webkit_src_redrawing), (gpointer) filter);
+
   gst_base_src_set_live((GstBaseSrc *) filter, TRUE);
 
   filter->window = gtk_offscreen_window_new();
@@ -248,36 +255,6 @@ gst_webkit_src_get_property (GObject * object, guint prop_id,
 
 /* GstElement vmethod implementations */
 
-/* this function handles sink events */
-static gboolean
-gst_webkit_src_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
-{
-  GstWebkitSrc *filter;
-  gboolean ret;
-
-  filter = GST_WEBKIT_SRC (parent);
-
-  GST_LOG_OBJECT (filter, "Received %s event: %" GST_PTR_FORMAT,
-      GST_EVENT_TYPE_NAME (event), event);
-
-  switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps * caps;
-
-      gst_event_parse_caps (event, &caps);
-      /* do something with the caps */
-
-      /* and forward */
-      ret = gst_pad_event_default (pad, parent, event);
-      break;
-    }
-    default:
-      ret = gst_pad_event_default (pad, parent, event);
-      break;
-  }
-  return ret;
-}
 
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
@@ -353,21 +330,6 @@ gst_webkit_src_create_buffer (GstWebkitSrc * src, gsize * bufsize)
 
 
   return buf;
-
-buffer_create_fail:
-  {
-    GST_ELEMENT_ERROR (src, RESOURCE, BUSY, (NULL),
-        ("Failed to create a buffer"));
-    return NULL;
-  }
-
-buffer_write_fail:
-  {
-    GST_ELEMENT_ERROR (src, RESOURCE, WRITE, (NULL),
-        ("Failed to write to buffer"));
-    gst_buffer_unref (buf);
-    return NULL;
-  }
 }
 
 static void
