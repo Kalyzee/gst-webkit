@@ -1,4 +1,4 @@
-su# Gst Webkit
+# Gst Webkit
 
 Easiest way to build overlays with Gstreamer
 
