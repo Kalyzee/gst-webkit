@@ -138,9 +138,9 @@ gst_webkit_src_class_init (GstWebkitSrcClass * klass)
 
   gst_element_class_set_details_simple(gstelement_class,
     "WebkitSrc",
-    "FIXME:Generic",
-    "FIXME:Generic Template Element",
-    "Ludovic <ludovic.bouguerra@kalyzee.com>");
+    "Html / css / js renderer element",
+    "Html / css / js renderer element",
+    "Ludovic Bouguerra <ludovic.bouguerra@kalyzee.com>");
 
   gst_element_class_add_pad_template (gstelement_class,
   gst_static_pad_template_get (&src_factory));
@@ -192,32 +192,28 @@ static void gst_webkit_src_redrawing(GObject* object, GParamSpec* pspec, gpointe
  * initialize instance structure
  */
 static void
-gst_webkit_src_init (GstWebkitSrc * filter)
+gst_webkit_src_init (GstWebkitSrc * src)
 {
 
-  filter->srcpad = gst_pad_new_from_static_template (&src_factory, "src");
-  GST_PAD_SET_PROXY_CAPS (filter->srcpad);
-  gst_element_add_pad (GST_ELEMENT (filter), filter->srcpad);
-
-  filter->url = "http://www.google.com";
-  filter->ready = FALSE;
+  src->ready = FALSE;
 
   if (!g_thread_supported()) {g_thread_init(NULL);}
 
-  filter->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+  src->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
-  g_signal_connect(filter->web_view, "notify::load-status", G_CALLBACK(gst_webkit_src_load_status_updated), (gpointer) filter);
+  g_signal_connect(src->web_view, "notify::load-status", G_CALLBACK(gst_webkit_src_load_status_updated), (gpointer) src);
   //g_signal_connect(filter->web_view, "draw", G_CALLBACK(gst_webkit_src_redrawing), (gpointer) filter);
 
-  gst_base_src_set_live((GstBaseSrc *) filter, TRUE);
+  gst_base_src_set_live((GstBaseSrc *) src, TRUE);
 
-  filter->window = gtk_offscreen_window_new();
-  gtk_window_set_default_size(GTK_WINDOW(filter->window), 1280, 720);
-  gtk_container_add(GTK_CONTAINER(filter->window), GTK_WIDGET(filter->web_view));
-  gtk_widget_realize(filter->window);
+  src->window = gtk_offscreen_window_new();
+  gtk_window_set_default_size(GTK_WINDOW(src->window), 1280, 720);
+  gtk_container_add(GTK_CONTAINER(src->window), GTK_WIDGET(src->web_view));
+  gtk_widget_realize(src->window);
 
-  gtk_widget_show_all(filter->window);
-  webkit_web_view_load_uri(filter->web_view, "http://localhost/test.html");
+  gtk_widget_show_all(src->window);
+
+  //webkit_web_view_load_uri(filter->web_view, "http://localhost/test.html");
 
 }
 
@@ -225,11 +221,12 @@ static void
 gst_webkit_src_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstWebkitSrc *filter = GST_WEBKIT_SRC (object);
+  GstWebkitSrc *src = GST_WEBKIT_SRC (object);
 
   switch (prop_id) {
     case PROP_URL:
-      filter->url = g_value_get_string (value);
+      src->url = g_value_get_string (value);
+      webkit_web_view_load_uri(src->web_view, src->url);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -403,6 +400,9 @@ gst_webkit_src_stop (GstBaseSrc * basesrc)
     gst_buffer_unref (src->parent);
     src->parent = NULL;
   }
+
+  gtk_widget_unrealize(src->window);
+  g_object_unref(src->window);
   GST_OBJECT_UNLOCK (src);
 
   return TRUE;
