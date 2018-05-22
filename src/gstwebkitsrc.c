@@ -115,11 +115,17 @@ static GstFlowReturn gst_webkit_src_create (GstBaseSrc * src, guint64 offset,
 
 /* GObject vmethod implementations */
 
+
+static gboolean
+gst_webkit_src_query (GstPad    *pad,
+                 GstObject *parent,
+                 GstQuery  *query);
+
 /* initialize the webkitsrc's class */
 static void
 gst_webkit_src_class_init (GstWebkitSrcClass * klass)
 {
-  gtk_init(NULL, NULL);
+  //
 
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
@@ -155,13 +161,14 @@ gst_webkit_src_class_init (GstWebkitSrcClass * klass)
 }
 
 
+
 static gboolean
 gst_webkit_src_event_handler (GstBaseSrc * basesrc, GstEvent * event)
 {
   GstWebkitSrc *src;
 
   src = GST_WEBKIT_SRC (basesrc);
-
+  //g_print("HEY EVENT ! %s", GST_EVENT_TYPE_NAME(event));
   return GST_BASE_SRC_CLASS (parent_class)->event (basesrc, event);
 }
 
@@ -178,7 +185,8 @@ static void gst_webkit_src_load_status_updated(GObject* object, GParamSpec* pspe
       return;
   }
 
-  g_timeout_add(1000, gst_webkit_src_load_webkit_ready, (gpointer) filter);
+  gst_webkit_src_load_webkit_ready(filter);
+
 }
 
 
@@ -195,6 +203,8 @@ static void
 gst_webkit_src_init (GstWebkitSrc * src)
 {
 
+
+  gtk_init(NULL, NULL);
   src->ready = FALSE;
 
   if (!g_thread_supported()) {g_thread_init(NULL);}
@@ -202,9 +212,9 @@ gst_webkit_src_init (GstWebkitSrc * src)
   src->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
   g_signal_connect(src->web_view, "notify::load-status", G_CALLBACK(gst_webkit_src_load_status_updated), (gpointer) src);
-  //g_signal_connect(filter->web_view, "draw", G_CALLBACK(gst_webkit_src_redrawing), (gpointer) filter);
 
   gst_base_src_set_live((GstBaseSrc *) src, TRUE);
+  gst_base_src_set_format (GST_BASE_SRC (src), GST_FORMAT_TIME);
 
   src->window = gtk_offscreen_window_new();
   gtk_window_set_default_size(GTK_WINDOW(src->window), 1280, 720);
@@ -212,8 +222,6 @@ gst_webkit_src_init (GstWebkitSrc * src)
   gtk_widget_realize(src->window);
 
   gtk_widget_show_all(src->window);
-
-  //webkit_web_view_load_uri(filter->web_view, "http://localhost/test.html");
 
 }
 
@@ -227,6 +235,8 @@ gst_webkit_src_set_property (GObject * object, guint prop_id,
     case PROP_URL:
       src->url = g_value_get_string (value);
       webkit_web_view_load_uri(src->web_view, src->url);
+      g_timeout_add(10, gst_webkit_src_load_webkit_ready, (gpointer) src);
+
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -401,8 +411,8 @@ gst_webkit_src_stop (GstBaseSrc * basesrc)
     src->parent = NULL;
   }
 
-  gtk_widget_unrealize(src->window);
-  g_object_unref(src->window);
+  //gtk_widget_unrealize(src->window);
+  //g_object_unref(src->window);
   GST_OBJECT_UNLOCK (src);
 
   return TRUE;

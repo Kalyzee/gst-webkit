@@ -3,7 +3,7 @@
 ##############################################################################
 # TODO: change libgstplugin.la to something else, e.g. libmysomething.la     #
 ##############################################################################
-plugin_LTLIBRARIES = libgstwebkitoverlay.la libgstwebkitsrc.la
+plugin_LTLIBRARIES = libgstwebkitoverlay.la libgstwebkitsrc.la 
 
 
 
@@ -26,6 +26,8 @@ libgstwebkitsrc_la_CFLAGS = $(GST_CFLAGS) $(CAIRO_CFLAGS) $(WEBKIT_CFLAGS)
 libgstwebkitsrc_la_LIBADD = $(GST_LIBS)  $(CAIRO_LIBS) $(WEBKIT_LIBS)
 libgstwebkitsrc_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
 libgstwebkitsrc_la_LIBTOOLFLAGS = --tag=disable-static
+
+
 
 # headers we need but don't want installed
 noinst_HEADERS = gstwebkitoverlayfilter.h
