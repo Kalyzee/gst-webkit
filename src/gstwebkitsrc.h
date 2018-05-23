@@ -48,7 +48,7 @@
 
 #include <gst/gst.h>
 #include <gtk/gtk.h>
-#include <webkit/webkit.h>
+#include <webkit2/webkit2.h>
 #include <gst/base/gstbasesrc.h>
 
 G_BEGIN_DECLS
@@ -80,7 +80,11 @@ struct _GstWebkitSrc
   const gchar* url;
   WebKitWebView *web_view;
   GtkWidget *window;
+
   gboolean ready;
+  guint8 * current;
+  guint8 * data_1;
+  guint8 * data_2;
 };
 
 struct _GstWebkitSrcClass

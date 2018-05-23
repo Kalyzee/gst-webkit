@@ -64,6 +64,7 @@
 
 #include <cairo.h>
 
+#include <stdlib.h>
 #include "gstwebkitsrc.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_webkit_src_debug);
@@ -102,7 +103,7 @@ static void gst_webkit_src_set_property (GObject * object, guint prop_id,
 static void gst_webkit_src_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-
+static guint gst_webkit_src_get_size (GstWebkitSrc * src);
 static gboolean gst_webkit_src_start (GstBaseSrc * basesrc);
 static gboolean gst_webkit_src_stop (GstBaseSrc * basesrc);
 static gboolean gst_webkit_src_is_seekable (GstBaseSrc * basesrc);
@@ -168,31 +169,50 @@ gst_webkit_src_event_handler (GstBaseSrc * basesrc, GstEvent * event)
   GstWebkitSrc *src;
 
   src = GST_WEBKIT_SRC (basesrc);
-  //g_print("HEY EVENT ! %s", GST_EVENT_TYPE_NAME(event));
   return GST_BASE_SRC_CLASS (parent_class)->event (basesrc, event);
 }
 
-static void gst_webkit_src_load_webkit_ready(gpointer filter){
-  GST_WEBKIT_SRC(filter)->ready = TRUE;
-  g_print("FILTER IS NOW READY");
-  return FALSE;
+
+static void gst_webkit_src_load_changed (WebKitWebView  *web_view,
+                                   WebKitLoadEvent load_event,
+                                   gpointer src)
+{
+    GST_DEBUG ("Webpage state changed");
+    if (load_event == WEBKIT_LOAD_FINISHED){
+      GST_DEBUG ("Webpage is now ready");
+      GST_WEBKIT_SRC(src)->ready = TRUE;
+    }
 }
 
-static void gst_webkit_src_load_status_updated(GObject* object, GParamSpec* pspec, gpointer filter){
-  WebKitWebView *web_view = WEBKIT_WEB_VIEW(object);
-  WebKitLoadStatus status = webkit_web_view_get_load_status(web_view);
-  if (status != WEBKIT_LOAD_FINISHED) {
-      return;
+static gboolean gst_webkit_src_refresh(gpointer pointer){
+  GstWebkitSrc *src;
+
+  src = GST_WEBKIT_SRC (pointer);
+
+  gsize size = gst_webkit_src_get_size(src);
+
+  if (src->ready){
+
+    GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
+
+    if (src->current == src->data_1){
+
+      memcpy(src->data_2, gdk_pixbuf_read_pixels(pixbuf), size);
+      src->current = src->data_2;
+
+    }else{
+      memcpy(src->data_1, gdk_pixbuf_get_pixels(pixbuf), size);
+      src->current = src->data_1;
+
+    }
+    g_object_unref(pixbuf);
+
   }
 
-  gst_webkit_src_load_webkit_ready(filter);
 
+  return TRUE;
 }
 
-
-static void gst_webkit_src_redrawing(GObject* object, GParamSpec* pspec, gpointer filter){
-  g_print("HELLO");
-}
 
 /* initialize the new element
  * instantiate pads and add them to element
@@ -203,26 +223,58 @@ static void
 gst_webkit_src_init (GstWebkitSrc * src)
 {
 
-
+  GST_DEBUG ("gtk init");
   gtk_init(NULL, NULL);
   src->ready = FALSE;
 
-  if (!g_thread_supported()) {g_thread_init(NULL);}
-
+  GST_DEBUG ("init webview");
   src->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
 
-  g_signal_connect(src->web_view, "notify::load-status", G_CALLBACK(gst_webkit_src_load_status_updated), (gpointer) src);
+  GST_DEBUG ("register load-changed callback");
+  g_signal_connect(src->web_view, "load-changed", G_CALLBACK(gst_webkit_src_load_changed), (gpointer) src);
 
+  GST_DEBUG ("Setting base SRC attributes Live / FORMAT");
   gst_base_src_set_live((GstBaseSrc *) src, TRUE);
   gst_base_src_set_format (GST_BASE_SRC (src), GST_FORMAT_TIME);
 
-  src->window = gtk_offscreen_window_new();
+  GST_DEBUG ("Initing GTK offscreen window");
+  src->window = gtk_offscreen_window_new ();
   gtk_window_set_default_size(GTK_WINDOW(src->window), 1280, 720);
   gtk_container_add(GTK_CONTAINER(src->window), GTK_WIDGET(src->web_view));
-  gtk_widget_realize(src->window);
+
+  WebKitSettings *settings = webkit_settings_new ();
+  webkit_settings_set_auto_load_images(settings, TRUE);
+  webkit_settings_set_enable_javascript(settings, TRUE);
+  webkit_settings_set_enable_webgl(settings, TRUE);
+  webkit_settings_set_allow_modal_dialogs(settings, FALSE);
+  webkit_settings_set_javascript_can_access_clipboard(settings, FALSE);
+  webkit_settings_set_enable_page_cache(settings, FALSE);
+  webkit_settings_set_enable_accelerated_2d_canvas(settings, TRUE);
+  webkit_settings_set_enable_write_console_messages_to_stdout(settings, TRUE);
+  webkit_settings_set_enable_plugins (settings, TRUE);
+  webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS);
+  webkit_web_view_set_settings (WEBKIT_WEB_VIEW(src->web_view), settings);
+
+  gsize size =  gst_webkit_src_get_size(src);
+  src->data_1 = malloc(size);
+  src->data_2 = malloc(size);
+  memset(src->data_1, 0, size);
+  memset(src->data_2, 0, size);
+
+  src->current = src->data_1;
 
   gtk_widget_show_all(src->window);
 
+  g_timeout_add(200, gst_webkit_src_refresh, (gpointer)src);
+  GST_DEBUG ("End initing gtk offscreen");
+
+}
+
+
+static gboolean gst_webkit_go_to_url_cb(gpointer object){
+  GstWebkitSrc *src = GST_WEBKIT_SRC (object);
+  webkit_web_view_load_uri(src->web_view, "http://www.google.com");
+  return FALSE;
 }
 
 static void
@@ -234,8 +286,8 @@ gst_webkit_src_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_URL:
       src->url = g_value_get_string (value);
-      webkit_web_view_load_uri(src->web_view, src->url);
-      g_timeout_add(10, gst_webkit_src_load_webkit_ready, (gpointer) src);
+      g_idle_add(gst_webkit_go_to_url_cb, (gpointer) object);
+      //webkit_web_view_load_uri(src->web_view, src->url);
 
       break;
     default:
@@ -289,12 +341,9 @@ gst_webkit_src_prepare_buffer (GstWebkitSrc * src, guint8 * data, gsize size)
 {
   if (size == 0)
     return;
-  if (src->ready){
-    GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
-    memcpy(data, gdk_pixbuf_get_pixels(pixbuf), size);
-  }else{
-    memset (data, 0, size);
-  }
+
+  memcpy (data, src->current, size);
+
 
 
 }
@@ -410,9 +459,10 @@ gst_webkit_src_stop (GstBaseSrc * basesrc)
     gst_buffer_unref (src->parent);
     src->parent = NULL;
   }
+  free(src->data_1);
+  free(src->data_2);
 
-  //gtk_widget_unrealize(src->window);
-  //g_object_unref(src->window);
+  g_object_unref(src->window);
   GST_OBJECT_UNLOCK (src);
 
   return TRUE;
@@ -445,6 +495,6 @@ GST_PLUGIN_DEFINE (
     webkitsrc_init,
     VERSION,
     "LGPL",
-    "GStreamer",
-    "http://gstreamer.net/"
+    "Webkit",
+    "http://www.kalyzee.com/"
 )
