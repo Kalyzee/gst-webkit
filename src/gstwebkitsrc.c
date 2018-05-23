@@ -275,7 +275,7 @@ webkitsrc_init (GstPlugin * webkitsrc)
    * exchange the string 'Template webkitsrc' with your description
    */
   GST_DEBUG_CATEGORY_INIT (gst_webkit_src_debug, "webkitsrc",
-      0, "Template webkitsrc");
+      0, "Webkit SRC debugger init");
 
   return gst_element_register (webkitsrc, "webkitsrc", GST_RANK_NONE,
       GST_TYPE_WEBKIT_SRC);
