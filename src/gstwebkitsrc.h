@@ -49,7 +49,10 @@
 #include <gst/gst.h>
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
-#include <gst/base/gstbasesrc.h>
+#include <gst/base/gstpushsrc.h>
+
+#include <gst/video/gstvideometa.h>
+#include <gst/video/gstvideopool.h>
 
 G_BEGIN_DECLS
 
@@ -70,7 +73,7 @@ typedef struct _GstWebkitSrcClass GstWebkitSrcClass;
 
 struct _GstWebkitSrc
 {
-  GstBaseSrc     element;
+  GstPushSrc     element;
   GstPad *sinkpad, *srcpad;
 
   GstBuffer	*parent;
@@ -81,15 +84,25 @@ struct _GstWebkitSrc
   WebKitWebView *web_view;
   GtkWidget *window;
 
+  GstVideoInfo info; /* protected by the object or stream lock */
+  gint64 timestamp_offset;              /* base offset */
+
+  /* previous caps running time and frames */
+  GstClockTime accum_rtime;              /* accumulated running_time */
+  gint64 accum_frames;                  /* accumulated frames */
+
+
+  /* running time and frames for current caps */
+  GstClockTime running_time;            /* total running time */
+  gint64 n_frames;                      /* total frames sent */
+  gboolean reverse;
+
   gboolean ready;
-  guint8 * current;
-  guint8 * data_1;
-  guint8 * data_2;
 };
 
 struct _GstWebkitSrcClass
 {
-  GstBaseSrcClass parent_class;
+  GstPushSrcClass parent_class;
 };
 
 GType gst_webkit_src_get_type (void);
