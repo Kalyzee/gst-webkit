@@ -47,72 +47,68 @@ sudo make install
 ```
 Factory Details:
   Rank                     none (0)
-  Long-name                WebkitOverlayFilter
-  Klass                    FIXME:Generic
-  Description              FIXME:Generic Template Element
-  Author                   Ludovic <ludovic.bouguerra@kalyzee.com>
+  Long-name                WebkitSrc
+  Klass                    Html / css / js renderer element
+  Description              Html / css / js renderer element
+  Author                   Ludovic Bouguerra <ludovic.bouguerra@kalyzee.com>
 
 Plugin Details:
-  Name                     webkitoverlayfilter
-  Description              webkitoverlayfilter
-  Filename                 /usr/local/lib/gstreamer-1.0/libgstwebkitoverlay.so
+  Name                     webkitsrc
+  Description              webkitsrc
+  Filename                 /usr/local/lib/gstreamer-1.0/libgstwebkitsrc.so
   Version                  1.0.0
   License                  LGPL
   Source module            gst-webkit
-  Binary package           GStreamer
-  Origin URL               http://gstreamer.net/
+  Binary package           Webkit
+  Origin URL               http://www.kalyzee.com/
 
 GObject
  +----GInitiallyUnowned
        +----GstObject
              +----GstElement
-                   +----GstWebkitOverlayFilter
+                   +----GstBaseSrc
+                         +----GstPushSrc
+                               +----GstWebkitSrc
 
 Pad Templates:
-  SINK template: 'sink'
-    Availability: Always
-    Capabilities:
-      video/x-raw
-                 format: { (string)ARGB }
-                  width: [ 1, 2147483647 ]
-                 height: [ 1, 2147483647 ]
-              framerate: [ 0/1, 2147483647/1 ]
-
   SRC template: 'src'
     Availability: Always
     Capabilities:
       video/x-raw
-                 format: { (string)ARGB }
-                  width: [ 1, 2147483647 ]
-                 height: [ 1, 2147483647 ]
-              framerate: [ 0/1, 2147483647/1 ]
-
-
-Element Flags:
-  no flags set
-
-Element Implementation:
-  Has change_state() function: gst_element_change_state_func
+                 format: { (string)RGBA }
+                  width: { (int)1280 }
+                 height: { (int)720 }
+              framerate: { (fraction)25/1 }
 
 Element has no clocking capabilities.
 Element has no URI handling capabilities.
 
 Pads:
-  SINK: 'sink'
-    Pad Template: 'sink'
   SRC: 'src'
     Pad Template: 'src'
 
 Element Properties:
   name                : The name of the object
                         flags: accès en lecture, accès en écriture
-                        String. Default: "webkitoverlayfilter0"
+                        String. Default: "webkitsrc0"
   parent              : The parent of the object
                         flags: accès en lecture, accès en écriture
                         Object of type "GstObject"
+  blocksize           : Size in bytes to read per buffer (-1 = default)
+                        flags: accès en lecture, accès en écriture
+                        Unsigned Integer. Range: 0 - 4294967295 Default: 4096
+  num-buffers         : Number of buffers to output before sending EOS (-1 = unlimited)
+                        flags: accès en lecture, accès en écriture
+                        Integer. Range: -1 - 2147483647 Default: -1
+  typefind            : Run typefind before negotiating (deprecated, non-functional)
+                        flags: accès en lecture, accès en écriture, obsolète
+                        Boolean. Default: false
+  do-timestamp        : Apply current stream time to buffers
+                        flags: accès en lecture, accès en écriture
+                        Boolean. Default: false
   url                 : url page
                         flags: accès en lecture, accès en écriture
-                        String. Default: "http://www.google.com"
+                        String. Default: null
 
 ```
 
@@ -120,16 +116,20 @@ Element Properties:
 Test pipeline
 
 ```
-GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc ! video/x-raw, format=RGB, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
+GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc url=http://localhost/test.html ! video/x-raw, format=RGBA, framerate=25/1, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
+
 ```
 
 
 ```
-GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc ! video/x-raw, format=RGBA, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
-```
+GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc url=http://localhost/test.html ! video/x-raw, format=RGBA, framerate=25/1, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
 
 ```
-GST_DEBUG=*webkit*:5 gst-launch-1.0 videotestsrc ! video/x-raw, format=RGB, width=1280, height=720 ! mixer.sink_0 \
+
+
+TODO 
+```
+GST_DEBUG=*webkit*:5 gst-launch-1.0 videotestsrc ! video/x-raw, format=ARGB, width=1280, height=720 ! mixer.sink_0 \
   webkitsrc  url="http://localhost/test.html" ! video/x-raw, format=RGB, width=1280, height=720 ! alpha method=green ! mixer.sink_1 \
   videomixer name=mixer sink_0::zorder=0 sink_1::zorder=1 ! \
   videoconvert ! autovideosink sync=FALSE
