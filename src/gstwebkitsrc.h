@@ -96,7 +96,7 @@ struct _GstWebkitSrc
   GstClockTime running_time;            /* total running time */
   gint64 n_frames;                      /* total frames sent */
   gboolean reverse;
-
+  guint8* data;
   gboolean ready;
 };
 
