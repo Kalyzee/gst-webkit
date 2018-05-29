@@ -335,6 +335,8 @@ gst_webkit_src_init (GstWebkitSrc * src)
   webkit_web_view_set_settings (WEBKIT_WEB_VIEW(src->web_view), settings);
   src->data = malloc(4*1280*720*sizeof(guint8));
 
+  webkit_web_context_set_cache_model(webkit_web_context_get_default(), WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
+
   gtk_widget_realize(src->window);
   gtk_widget_show_all(src->window);
 
