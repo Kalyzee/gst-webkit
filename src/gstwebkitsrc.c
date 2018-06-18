@@ -62,8 +62,6 @@
 
 #include <gst/gst.h>
 
-#include <cairo.h>
-
 #include <stdlib.h>
 #include "gstwebkitsrc.h"
 
@@ -195,28 +193,22 @@ gst_webkit_src_fill (GstPushSrc * psrc, GstBuffer * buffer)
   GstVideoFrame frame;
   GstClockTime next_time;
 
-  //GST_DEBUG ("Entering fill method");
-
   src = GST_WEBKIT_SRC (psrc);
 
 
-  //GST_DEBUG ("GET SRC");
   if (G_UNLIKELY (GST_VIDEO_INFO_FORMAT (&src->info) ==
           GST_VIDEO_FORMAT_UNKNOWN))
     goto not_negotiated;
 
-  //GST_DEBUG ("BEFORE MAP");
 
   if (!gst_video_frame_map (&frame, &src->info, buffer, GST_MAP_WRITE))
     goto invalid_frame;
 
-  //GST_DEBUG ("ZE BUFFER");
 
   GST_BUFFER_PTS (buffer) =
         src->accum_rtime + src->timestamp_offset + src->running_time;
   GST_BUFFER_DTS (buffer) = GST_CLOCK_TIME_NONE;
 
-  //GST_DEBUG ("LAc ..");
 
   guint8 *pixels = GST_VIDEO_FRAME_PLANE_DATA (&frame, 0);
   guint stride = GST_VIDEO_FRAME_PLANE_STRIDE (&frame, 0);
@@ -224,27 +216,14 @@ gst_webkit_src_fill (GstPushSrc * psrc, GstBuffer * buffer)
   guint width = GST_VIDEO_FRAME_WIDTH (&frame);
   guint height = GST_VIDEO_FRAME_HEIGHT (&frame);
 
-  //GST_DEBUG ("ICI ..");
   gst_object_sync_values (GST_OBJECT (psrc), GST_BUFFER_PTS (buffer));
 
 
-  //GST_DEBUG ("END ..");
   GST_OBJECT_LOCK (src);
   if (src->ready){
     memcpy (pixels, src->data, 1280*720*4* sizeof(unsigned char));
-    GST_OBJECT_UNLOCK (src);
-
-  }else{
-    GST_OBJECT_UNLOCK (src);
-    for (int h = 0; h < height; ++h) {
-        for (int w = 0; w < width; ++w) {
-          guint8 *pixel = pixels + h * stride + w * pixel_stride;
-          unsigned char rgb[4] =  {255, 0, 0, 0};
-          memcpy (pixel, rgb, pixel_stride);
-        }
-    }
   }
-
+  GST_OBJECT_UNLOCK (src);
 
   GST_BUFFER_OFFSET (buffer) = src->accum_frames + src->n_frames;
   src->n_frames++;
@@ -309,7 +288,6 @@ gst_webkit_src_init (GstWebkitSrc * src)
 
   GST_DEBUG ("init webview");
   src->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
-
   GST_DEBUG ("register load-changed callback");
 
   GST_DEBUG ("Setting base SRC attributes Live / FORMAT");
@@ -318,26 +296,37 @@ gst_webkit_src_init (GstWebkitSrc * src)
 
   GST_DEBUG ("Initing GTK offscreen window");
   src->window = gtk_offscreen_window_new ();
+
+
+  static const GdkRGBA transparent = {.0, .0, .0, .0};
+  gtk_widget_set_app_paintable (GTK_WIDGET (src->window), TRUE);
+
+  webkit_web_view_set_background_color(src->web_view, &transparent);
+
   gtk_window_set_default_size(GTK_WINDOW(src->window), 1280, 720);
   gtk_container_add(GTK_CONTAINER(src->window), GTK_WIDGET(src->web_view));
+  GST_DEBUG ("COLOR SET");
+
+
 
   WebKitSettings *settings = webkit_settings_new ();
   webkit_settings_set_auto_load_images(settings, TRUE);
   webkit_settings_set_enable_javascript(settings, TRUE);
-  webkit_settings_set_enable_webgl(settings, TRUE);
+  webkit_settings_set_enable_webgl(settings, FALSE);
   webkit_settings_set_allow_modal_dialogs(settings, FALSE);
   webkit_settings_set_javascript_can_access_clipboard(settings, FALSE);
   webkit_settings_set_enable_page_cache(settings, FALSE);
-  webkit_settings_set_enable_accelerated_2d_canvas(settings, TRUE);
-  webkit_settings_set_enable_write_console_messages_to_stdout(settings, TRUE);
-  webkit_settings_set_enable_plugins (settings, TRUE);
-  webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS);
+  webkit_settings_set_enable_accelerated_2d_canvas(settings, FALSE);
+  webkit_settings_set_enable_write_console_messages_to_stdout(settings, FALSE);
+  webkit_settings_set_enable_plugins (settings, FALSE);
+  webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER);
   webkit_web_view_set_settings (WEBKIT_WEB_VIEW(src->web_view), settings);
+
+
   src->data = malloc(4*1280*720*sizeof(guint8));
 
   webkit_web_context_set_cache_model(webkit_web_context_get_default(), WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
 
-  gtk_widget_realize(src->window);
   gtk_widget_show_all(src->window);
 
   g_timeout_add(50, gst_webkit_src_load_webkit_ready, (gpointer) src);
@@ -439,8 +428,7 @@ gst_webkit_src_stop (GstBaseSrc * basesrc)
     src->parent = NULL;
   }
 
-
-  g_object_unref(src->window);
+  //g_object_unref(src->window);
   GST_OBJECT_UNLOCK (src);
 
   return TRUE;

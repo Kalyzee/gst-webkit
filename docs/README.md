@@ -116,7 +116,7 @@ Element Properties:
 Test pipeline
 
 ```
-GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc url=http://localhost/test.html ! video/x-raw, format=RGBA, framerate=25/1, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
+GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc url=http://localhost/news/ ! video/x-raw, format=RGBA, framerate=25/1, width=1280, height=720 ! videoconvert ! xvimagesink sync=FALSE
 
 ```
 
@@ -127,10 +127,8 @@ GST_DEBUG=*webkit*:5 gst-launch-1.0 webkitsrc url=http://localhost/test.html ! v
 ```
 
 
-TODO 
+TODO
 ```
-GST_DEBUG=*webkit*:5 gst-launch-1.0 videotestsrc ! video/x-raw, format=ARGB, width=1280, height=720 ! mixer.sink_0 \
-  webkitsrc  url="http://localhost/test.html" ! video/x-raw, format=RGB, width=1280, height=720 ! alpha method=green ! mixer.sink_1 \
-  videomixer name=mixer sink_0::zorder=0 sink_1::zorder=1 ! \
-  videoconvert ! autovideosink sync=FALSE
+GST_DEBUG=*webkit*:5 gst-launch-1.0 videotestsrc ! video/x-raw, format=RGBA, width=1280, height=720 ! mixer.sink_0   webkitsrc  url="http://localhost/news/" ! video/x-raw, format=RGBA, width=1280, height=720 ! alpha method=green ! mixer.sink_1   videomixer name=mixer sink_0::zorder=0 sink_1::zorder=1 !   videoconvert ! autovideosink sync=FALSE
+
 ```
