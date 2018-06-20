@@ -9,6 +9,7 @@ GST_REQUIRED=1.0.0
 GSTPB_REQUIRED=1.0.0
 CAIRO_REQUIRED=1.14.6
 WEBKIT_REQUIRED=2.4.11
+ORC_REQUIRED=0.4.0
 
 #AC_CONFIG_SRCDIR([src/gstplugin.c])
 AC_CONFIG_HEADERS([config.h])
@@ -59,6 +60,18 @@ PKG_CHECK_MODULES(GST, [
       libgstreamer1.0-dev and libgstreamer-plugins-base1.0-dev.
       on RPM-based systems gstreamer1.0-devel, libgstreamer1.0-devel
       or similar. The minimum version required is $GST_REQUIRED.
+  ])
+])
+
+
+PKG_CHECK_MODULES(ORC, [
+  orc-0.4 >= $ORC_REQUIRED
+], [
+  AC_SUBST(ORC_CFLAGS)
+  AC_SUBST(ORC_LIBS)
+], [
+  AC_MSG_ERROR([
+      You need to install or upgrade ORC
   ])
 ])
 

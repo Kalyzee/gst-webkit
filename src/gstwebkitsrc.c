@@ -60,6 +60,16 @@
 #  include <config.h>
 #endif
 
+#include <stdio.h>
+#include <string.h>
+
+
+#ifdef HAVE_ORC
+#include <orc/orc.h>
+#else
+#define orc_memcpy(a,b,c) memcpy(a,b,c)
+#endif
+
 #include <gst/gst.h>
 
 #include <stdlib.h>
@@ -111,10 +121,15 @@ static GstFlowReturn gst_webkit_src_fill (GstPushSrc * psrc, GstBuffer * buffer)
 static gboolean
 gst_webkit_src_setcaps (GstBaseSrc * bsrc, GstCaps * caps);
 
+static gboolean gst_webkit_src_query (GstBaseSrc * bsrc, GstQuery * query);
+
+static void
+  gst_webkit_src_get_times (GstBaseSrc * basesrc, GstBuffer * buffer,
+    GstClockTime * start, GstClockTime * end);
+
 static gboolean
-gst_webkit_src_query (GstPad    *pad,
-                 GstObject *parent,
-                 GstQuery  *query);
+    gst_webkit_src_do_seek (GstBaseSrc * bsrc, GstSegment * segment);
+
 
 /* initialize the webkitsrc's class */
 static void
@@ -153,18 +168,51 @@ gst_webkit_src_class_init (GstWebkitSrcClass * klass)
   gstbase_src_class->stop = GST_DEBUG_FUNCPTR (gst_webkit_src_stop);
   gstpush_src_class->fill = GST_DEBUG_FUNCPTR (gst_webkit_src_fill);
   gstbase_src_class->set_caps = GST_DEBUG_FUNCPTR(gst_webkit_src_setcaps);
+  gstbase_src_class->query = GST_DEBUG_FUNCPTR(gst_webkit_src_query);
+  gstbase_src_class->get_times = GST_DEBUG_FUNCPTR(gst_webkit_src_get_times);
+  gstbase_src_class->do_seek = GST_DEBUG_FUNCPTR(gst_webkit_src_do_seek);
+
 }
+
+
+static gboolean
+gst_webkit_src_query (GstBaseSrc * bsrc, GstQuery * query)
+{
+  gboolean res;
+  GstWebkitSrc *src;
+
+  src = GST_WEBKIT_SRC(bsrc);
+
+  switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_CONVERT:
+    {
+      GstFormat src_fmt, dest_fmt;
+      gint64 src_val, dest_val;
+
+      gst_query_parse_convert (query, &src_fmt, &src_val, &dest_fmt, &dest_val);
+      res =
+          gst_video_info_convert (&src->info, src_fmt, src_val, dest_fmt,
+          &dest_val);
+      gst_query_set_convert (query, src_fmt, src_val, dest_fmt, dest_val);
+      break;
+    }
+    default:
+      res = GST_BASE_SRC_CLASS (parent_class)->query (bsrc, query);
+      break;
+  }
+  return res;
+}
+
 
 static gboolean
 gst_webkit_src_setcaps (GstBaseSrc * bsrc, GstCaps * caps)
 {
 
-  GST_LOG ("*****Entering set caps*****");
+  GST_DEBUG ("*****Entering set caps*****");
   const GstStructure *structure;
   structure = gst_caps_get_structure (caps, 0);
   GstWebkitSrc *src = GST_WEBKIT_SRC (bsrc);
   GstVideoInfo info;
-
 
   if (gst_structure_has_name (structure, "video/x-raw")) {
     /* we can use the parsing code */
@@ -174,6 +222,8 @@ gst_webkit_src_setcaps (GstBaseSrc * bsrc, GstCaps * caps)
   }else{
     goto parse_failed;
   }
+
+
 
   src->info = info;
 
@@ -221,7 +271,7 @@ gst_webkit_src_fill (GstPushSrc * psrc, GstBuffer * buffer)
 
   GST_OBJECT_LOCK (src);
   if (src->ready){
-    memcpy (pixels, src->data, 1280*720*4* sizeof(unsigned char));
+    orc_memcpy (pixels, src->data, 1280*720*4* sizeof(unsigned char));
   }
   GST_OBJECT_UNLOCK (src);
 
@@ -265,7 +315,7 @@ static gboolean gst_webkit_src_load_webkit_ready (gpointer psrc)
 
     GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
     GST_OBJECT_LOCK (src);
-    memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4);
+    orc_memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4);
     GST_OBJECT_UNLOCK (src);
     g_object_unref(pixbuf);
     return TRUE;
@@ -298,9 +348,16 @@ gst_webkit_src_init (GstWebkitSrc * src)
   src->window = gtk_offscreen_window_new ();
 
 
-  static const GdkRGBA transparent = {.0, .0, .0, .0};
-  gtk_widget_set_app_paintable (GTK_WIDGET (src->window), TRUE);
+  static const GdkRGBA transparent = {255, 255, 0, 0};
 
+  GdkScreen *screen = gtk_window_get_screen (GTK_WINDOW (src->window));
+  GdkVisual *rgba_visual = gdk_screen_get_rgba_visual (screen);
+
+  if (!rgba_visual)
+       return;
+
+   gtk_widget_set_visual (GTK_WIDGET (src->window), rgba_visual);
+   gtk_widget_set_app_paintable (GTK_WIDGET (src->window), TRUE);
   webkit_web_view_set_background_color(src->web_view, &transparent);
 
   gtk_window_set_default_size(GTK_WINDOW(src->window), 1280, 720);
@@ -427,9 +484,69 @@ gst_webkit_src_stop (GstBaseSrc * basesrc)
     gst_buffer_unref (src->parent);
     src->parent = NULL;
   }
-
-  //g_object_unref(src->window);
+  
+  gtk_widget_destroy(GTK_WIDGET(src->web_view));
+  gtk_widget_destroy(GTK_WINDOW(src->window));
+  free(src->data);
   GST_OBJECT_UNLOCK (src);
+
+  return TRUE;
+}
+
+
+
+static void
+gst_webkit_src_get_times (GstBaseSrc * basesrc, GstBuffer * buffer,
+    GstClockTime * start, GstClockTime * end)
+{
+  /* for live sources, sync on the timestamp of the buffer */
+  if (gst_base_src_is_live (basesrc)) {
+    GstClockTime timestamp = GST_BUFFER_DTS (buffer);
+
+    if (GST_CLOCK_TIME_IS_VALID (timestamp)) {
+      /* get duration to calculate end time */
+      GstClockTime duration = GST_BUFFER_DURATION (buffer);
+
+      if (GST_CLOCK_TIME_IS_VALID (duration)) {
+        *end = timestamp + duration;
+      }
+      *start = timestamp;
+    }
+  } else {
+    *start = -1;
+    *end = -1;
+  }
+}
+
+static gboolean
+gst_webkit_src_do_seek (GstBaseSrc * bsrc, GstSegment * segment)
+{
+  GstClockTime position;
+  GstWebkitSrc *src;
+
+  src = GST_WEBKIT_SRC(bsrc);
+
+  segment->time = segment->start;
+  position = segment->position;
+
+  /* now move to the position indicated */
+  if (src->info.fps_n) {
+    src->n_frames = gst_util_uint64_scale (position,
+        src->info.fps_n, src->info.fps_d * GST_SECOND);
+  } else {
+    src->n_frames = 0;
+  }
+  src->accum_frames = 0;
+  src->accum_rtime = 0;
+  if (src->info.fps_n) {
+    src->running_time = gst_util_uint64_scale (src->n_frames,
+        src->info.fps_d * GST_SECOND, src->info.fps_n);
+  } else {
+    /* FIXME : Not sure what to set here */
+    src->running_time = 0;
+  }
+
+  g_assert (src->running_time <= position);
 
   return TRUE;
 }
@@ -437,7 +554,7 @@ gst_webkit_src_stop (GstBaseSrc * basesrc)
 static gboolean
 gst_webkit_src_is_seekable (GstBaseSrc * basesrc)
 {
-  return FALSE;
+  return TRUE;
 }
 
 /* PACKAGE: this is usually set by autotools depending on some _INIT macro

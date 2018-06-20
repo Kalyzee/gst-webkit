@@ -11,7 +11,7 @@ config.status
 config.h.in~
 src/.libs
 
-
+docs/_site
 
 # Prerequisites
 *.d

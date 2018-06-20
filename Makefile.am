@@ -1,4 +1,3 @@
-SUBDIRS = src \
-          tests
+SUBDIRS = src
 
 EXTRA_DIST = autogen.sh
