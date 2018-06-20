@@ -1,0 +1,28 @@
+title: Gstreamer Webkit Plugin
+email: ludovic.bouguerra@kalyzee.com
+description: >
+  Write an awesome description for your new site here. You can edit this
+  line in _config.yml. It will appear in your document head meta (for
+  Google search results) and in your feed.xml site description.
+baseurl: "" # the subpath of your site, e.g. /blog
+
+url: "https://kalyzee.github.io/gst-webkit/"
+
+twitter_username: kalyzee
+github_username:  kalyzee
+
+# Build settings
+markdown: kramdown
+remote_theme: kalyzee/jekyll-theme
+
+doc:
+  categories:
+    presentation:
+      url: #presentation
+      title: Presentation
+    installation:
+      url: #installation
+      title: Installation
+    usage:
+      url: #usage
+      title: Usage
