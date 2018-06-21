@@ -168,40 +168,12 @@ gst_webkit_src_class_init (GstWebkitSrcClass * klass)
   gstbase_src_class->stop = GST_DEBUG_FUNCPTR (gst_webkit_src_stop);
   gstpush_src_class->fill = GST_DEBUG_FUNCPTR (gst_webkit_src_fill);
   gstbase_src_class->set_caps = GST_DEBUG_FUNCPTR(gst_webkit_src_setcaps);
-  gstbase_src_class->query = GST_DEBUG_FUNCPTR(gst_webkit_src_query);
   gstbase_src_class->get_times = GST_DEBUG_FUNCPTR(gst_webkit_src_get_times);
   gstbase_src_class->do_seek = GST_DEBUG_FUNCPTR(gst_webkit_src_do_seek);
 
 }
 
 
-static gboolean
-gst_webkit_src_query (GstBaseSrc * bsrc, GstQuery * query)
-{
-  gboolean res;
-  GstWebkitSrc *src;
-
-  src = GST_WEBKIT_SRC(bsrc);
-
-  switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CONVERT:
-    {
-      GstFormat src_fmt, dest_fmt;
-      gint64 src_val, dest_val;
-
-      gst_query_parse_convert (query, &src_fmt, &src_val, &dest_fmt, &dest_val);
-      res =
-          gst_video_info_convert (&src->info, src_fmt, src_val, dest_fmt,
-          &dest_val);
-      gst_query_set_convert (query, src_fmt, src_val, dest_fmt, dest_val);
-      break;
-    }
-    default:
-      res = GST_BASE_SRC_CLASS (parent_class)->query (bsrc, query);
-      break;
-  }
-  return res;
-}
 
 
 static gboolean
@@ -484,7 +456,7 @@ gst_webkit_src_stop (GstBaseSrc * basesrc)
     gst_buffer_unref (src->parent);
     src->parent = NULL;
   }
-  
+
   gtk_widget_destroy(GTK_WIDGET(src->web_view));
   gtk_widget_destroy(GTK_WINDOW(src->window));
   free(src->data);
