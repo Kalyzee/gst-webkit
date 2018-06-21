@@ -121,7 +121,6 @@ static GstFlowReturn gst_webkit_src_fill (GstPushSrc * psrc, GstBuffer * buffer)
 static gboolean
 gst_webkit_src_setcaps (GstBaseSrc * bsrc, GstCaps * caps);
 
-static gboolean gst_webkit_src_query (GstBaseSrc * bsrc, GstQuery * query);
 
 static void
   gst_webkit_src_get_times (GstBaseSrc * basesrc, GstBuffer * buffer,
