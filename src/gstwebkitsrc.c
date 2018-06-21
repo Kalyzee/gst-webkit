@@ -272,7 +272,7 @@ gst_webkit_src_fill (GstPushSrc * psrc, GstBuffer * buffer)
   GST_OBJECT_LOCK (src);
   if (src->ready){
     GST_DEBUG ("Copy buffer -> box");
-    orc_memcpy (pixels, src->data, 1280*720*4* sizeof(unsigned char));
+    orc_memcpy (pixels, src->data, 1280*720*4* sizeof(guint8));
     GST_DEBUG ("End copy -> box");
 
   }
@@ -319,7 +319,7 @@ static gboolean gst_webkit_src_load_webkit_ready (gpointer psrc)
     GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
     GST_OBJECT_LOCK (src);
     GST_DEBUG ("Copy webkit -> buffer");
-    orc_memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4);
+    orc_memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4*sizeof(guint8));
     GST_DEBUG ("End webkit -> buffer");
 
     GST_OBJECT_UNLOCK (src);
