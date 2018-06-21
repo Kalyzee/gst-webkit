@@ -265,14 +265,15 @@ gst_webkit_src_fill (GstPushSrc * psrc, GstBuffer * buffer)
   guint pixel_stride = GST_VIDEO_FRAME_COMP_PSTRIDE (&frame, 0);
   guint width = GST_VIDEO_FRAME_WIDTH (&frame);
   guint height = GST_VIDEO_FRAME_HEIGHT (&frame);
+  gsize size = GST_VIDEO_FRAME_SIZE(&frame);
 
   gst_object_sync_values (GST_OBJECT (psrc), GST_BUFFER_PTS (buffer));
 
 
   GST_OBJECT_LOCK (src);
   if (src->ready){
-    GST_DEBUG ("Copy buffer -> box");
-    memcpy (pixels, src->data, 1280*720*4* sizeof(guint8));
+    GST_DEBUG ("Copy buffer -> box %d %d ", size, 1280*720*4* sizeof(guint8));
+    orc_memcpy (pixels, src->data, size);
     GST_DEBUG ("End copy -> box");
 
   }
@@ -319,7 +320,7 @@ static gboolean gst_webkit_src_load_webkit_ready (gpointer psrc)
     GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
     GST_OBJECT_LOCK (src);
     GST_DEBUG ("Copy webkit -> buffer");
-    memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4*sizeof(guint8));
+    orc_memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4*sizeof(guint8));
     GST_DEBUG ("End webkit -> buffer");
 
     GST_OBJECT_UNLOCK (src);
