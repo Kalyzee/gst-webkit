@@ -97,6 +97,7 @@ struct _GstWebkitSrc
   gint64 n_frames;                      /* total frames sent */
   gboolean reverse;
   guint8* data;
+  gboolean enabled;
   gboolean ready;
 };
 

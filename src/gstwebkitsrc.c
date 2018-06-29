@@ -88,7 +88,8 @@ enum
 enum
 {
   PROP_0,
-  PROP_URL
+  PROP_URL,
+  PROP_ENABLED
 };
 
 /* the capabilities of the inputs and outputs.
@@ -153,6 +154,10 @@ gst_webkit_src_class_init (GstWebkitSrcClass * klass)
   g_object_class_install_property (gobject_class, PROP_URL,
       g_param_spec_string ("url", "URL", "url page",
           "", G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_ENABLED,
+      g_param_spec_boolean("enabled", "enabled", "enabled",
+          TRUE, G_PARAM_READWRITE));
 
   gst_element_class_set_details_simple(gstelement_class,
     "WebkitSrc",
@@ -315,17 +320,23 @@ invalid_frame:
 
 static gboolean gst_webkit_src_load_webkit_ready (gpointer psrc)
 {
+
     GstWebkitSrc *src = GST_WEBKIT_SRC (psrc);
-
-    GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
     GST_OBJECT_LOCK (src);
-    GST_DEBUG ("Copy webkit -> buffer");
-    orc_memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4*sizeof(guint8));
-    GST_DEBUG ("End webkit -> buffer");
+    if (src->enabled){
+      GdkPixbuf* pixbuf = gtk_offscreen_window_get_pixbuf(src->window);
+      GST_DEBUG ("Copy webkit -> buffer");
+      orc_memcpy(src->data, gdk_pixbuf_read_pixels(pixbuf), 1280*720*4*sizeof(guint8));
+      GST_DEBUG ("End webkit -> buffer");
+      g_object_unref(pixbuf);
+    } else{
+      memset(src->data, 0, 1280*720*4*sizeof(guint8));
+    }
 
-    GST_OBJECT_UNLOCK (src);
-    g_object_unref(pixbuf);
-    return TRUE;
+  GST_OBJECT_UNLOCK (src);
+  return TRUE;
+
+
 }
 
 
@@ -357,15 +368,15 @@ gst_webkit_src_init (GstWebkitSrc * src)
 
   static const GdkRGBA transparent = {255, 255, 0, 0};
 
-  GdkScreen *screen = gtk_window_get_screen (GTK_WINDOW (src->window));
+/*  GdkScreen *screen = gtk_window_get_screen (GTK_WINDOW (src->window));
   GdkVisual *rgba_visual = gdk_screen_get_rgba_visual (screen);
 
   if (!rgba_visual)
        return;
 
-   gtk_widget_set_visual (GTK_WIDGET (src->window), rgba_visual);
-   gtk_widget_set_app_paintable (GTK_WIDGET (src->window), TRUE);
-  webkit_web_view_set_background_color(src->web_view, &transparent);
+   gtk_widget_set_visual (GTK_WIDGET (src->window), rgba_visual);*/
+   //gtk_widget_set_app_paintable (GTK_WIDGET (src->window), TRUE);
+  //webkit_web_view_set_background_color(src->web_view, &transparent);
 
   gtk_window_set_default_size(GTK_WINDOW(src->window), 1280, 720);
   gtk_container_add(GTK_CONTAINER(src->window), GTK_WIDGET(src->web_view));
@@ -380,8 +391,8 @@ gst_webkit_src_init (GstWebkitSrc * src)
   webkit_settings_set_allow_modal_dialogs(settings, FALSE);
   webkit_settings_set_javascript_can_access_clipboard(settings, FALSE);
   webkit_settings_set_enable_page_cache(settings, FALSE);
-  webkit_settings_set_enable_accelerated_2d_canvas(settings, FALSE);
-  webkit_settings_set_enable_write_console_messages_to_stdout(settings, FALSE);
+  webkit_settings_set_enable_accelerated_2d_canvas(settings, TRUE);
+  webkit_settings_set_enable_write_console_messages_to_stdout(settings, TRUE);
   webkit_settings_set_enable_plugins (settings, FALSE);
   webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER);
   webkit_web_view_set_settings (WEBKIT_WEB_VIEW(src->web_view), settings);
@@ -423,6 +434,11 @@ gst_webkit_src_set_property (GObject * object, guint prop_id,
       g_idle_add(gst_webkit_go_to_url_cb, (gpointer) object);
 
       break;
+      case PROP_ENABLED:
+        GST_OBJECT_LOCK(src);
+        src->enabled = g_value_get_boolean(value);
+        GST_OBJECT_UNLOCK(src);
+        break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -439,6 +455,9 @@ gst_webkit_src_get_property (GObject * object, guint prop_id,
     case PROP_URL:
       g_value_set_string (value, filter->url);
       break;
+      case PROP_ENABLED:
+        g_value_set_boolean(value, filter->enabled);
+        break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
